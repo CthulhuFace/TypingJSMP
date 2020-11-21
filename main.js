@@ -1,136 +1,118 @@
-var outputTxt;
-var outputNextTxt;
-var inputTxt;
-
-var values;
-
-var letterCount = 0;
-var corrWords = 0;
-var wrongWords = 0;
-var corrSymbols = 0;
-var wrongSymbols = 0;
-var started = false;
 
 $(function () {
-    outputTxt = $("#outputTxt");
-    outputNextTxt = $("#outputNextTxt");
-    inputTxt = $("#inputTxt");
-
+    results = { corrWords: 0, wrongWords: 0, corrSymbols: 0, wrongSymbols: 0 };
+    started = false;
+    $("#inputTxt").on("input", updateValue);
     $.getJSON("wordsJSON.json", function (data) {
-        values = data;
-        
-        var text = "";
-        for (i = 0; i < 5; i++) {
-            text += values[Math.floor(Math.random() * Object.keys(values).length + 1)] + " ";
-        }
-        letterCountNext = text.length;
-        var elements = $();
-        for (i = 0; i < letterCountNext; i++) {
-            elements = elements.add("<span id=\"letter" + i + "\" class=\"default\">" + text.charAt(i) + "</span>");
-        }
-        outputNextTxt.append(elements);
+        values = data.words;
+        totalWordCount = data.wordCount;
+        refreshBottomRow();
         printTest();
     });
-
-    inputTxt.on("input", updateValue);
-
-
 })
 
-function updateValue(e) {
-    if (started) {
-        let max = e.target.value.length;
-        for (index = 0; index < max; index++) {
-            if (e.target.value.charAt(index) == $("#letter" + index).text()) {
-                changeColor(index, "correct");
-            }
-            else {
-                changeColor(index, "wrong");
-            }
-        }
-        if (max < letterCount)
-            for (index = max; index < letterCount; index++)
-                changeColor(index, "default");
-        else if (max == letterCount)
-            verify();
-    }
-    else {
-        started = true;
-        inputTxt.attr("placeholder","");
-        start();
-    }
-}
 
+function updateValue(e) {
+    if (!started) {
+        start();
+        started = true;
+    }
+    let max = e.target.value.length;
+    for (index = 0; index < max; index++) {
+        if (e.target.value.charAt(index) == $("#letter" + index).text()) {
+            changeColor(index, "correct");
+        }
+        else {
+            changeColor(index, "wrong");
+        }
+    }
+    if (max < letterCount)
+        for (index = max; index < letterCount; index++)
+            changeColor(index, "default");
+    else if (max == letterCount)
+        verify(false);
+}
 
 
 function changeColor(index, style) {
     $("#letter" + index).attr("class", style);
 }
 
-function verify() {
-
+function verify(isLastCheck) {
     var isValid = true;
-    for (index = 0; index < letterCount; index++) {
-        var inputChar = inputTxt.val().charAt(index);
+    for (index = 0; index < $("#inputTxt").val().length; index++) {
+        var inputChar = $("#inputTxt").val().charAt(index);
         var reqChar = $("#letter" + index).text();
         //Symbols count
-        if (inputChar != " " && inputChar == reqChar)
-            corrSymbols++;
-        else if (inputChar != " " && inputChar != reqChar)
-            wrongSymbols++;
-
+        if (reqChar != " " && inputChar == reqChar)
+            results.corrSymbols++;
+        else if (reqChar != " " && inputChar != reqChar)
+            results.wrongSymbols++;
         //Words count
-        if(reqChar != " "){
-            if(isValid && reqChar != inputChar){
+        if (reqChar != " ") {
+            if (isValid && reqChar != inputChar) {
                 isValid = false;
             }
-        } else if (reqChar == " "){
-            if(isValid){
-                corrWords++;
-            } else wrongWords++;
+        } else if (reqChar == " ") {
+            if (isValid) {
+                results.corrWords++;
+            } else results.wrongWords++;
             isValid = true;
         }
     }
-
-        
-    printTest();
+    if (!isLastCheck) {
+        printTest();
+    }
 }
 
 function start() {
-    var dateInAMin = new Date(Date.now() + 60 * 1000);
-    $("#timerTxt").text("60 seconds left");
+    $("#label").text("Type away!");
+    var dateInAMin = Date.now() + 60000;
+    $("#timerTxt").text("59 seconds left");
     var x = setInterval(() => {
-        var delta = dateInAMin - Date.now();
-        $("#timerTxt").text(Math.floor((delta) / 1000) + " seconds left");
+        var delta = Math.floor((dateInAMin - Date.now()) / 1000);
+        $("#timerTxt").text(delta + " seconds left");
         if (delta <= 0) {
             clearInterval(x);
-            verify();
+            verify(true);
             finish();
         }
     }, 1000);
 }
 
 function finish() {
-    var result = "WPM:" + ((corrWords/60)*100).toPrecision(2) + " ("+corrWords+
-    "/"+(wrongWords+corrWords)+") Symbols ("+corrSymbols+"/"+(wrongSymbols+corrSymbols)+")";
-    $("#timerTxt").text(result);
-    inputTxt.prop("disabled", true);
+    var resultWords = "WPM:" + results.corrWords + " (" + results.corrWords +
+        "/" + (results.wrongWords + results.corrWords) + ")";
+    var resultsSymbols = "Symbols (" + results.corrSymbols + "/"
+        + (results.wrongSymbols + results.corrSymbols) + ")";
+
+    $("#inputTxt").val("");
+    $("#label").text("Refresh the page to play again!");
+    $("#timerTxt").text("Time's up!");
+    $("#outputTxt").text(resultWords);
+    $("#outputNextTxt").text(resultsSymbols);
+    $("#inputTxt").prop("disabled", true);
 }
 
+
 function printTest() {
-    inputTxt.val("");
+    $("#inputTxt").val("");
     letterCount = letterCountNext;
-    outputTxt.empty();
-    outputTxt.append(outputNextTxt.html());
-    outputNextTxt.empty();
+    $("#outputTxt").empty();
+    $("#outputTxt").append($("#outputNextTxt").html());
+    $("#outputNextTxt").empty();
+    refreshBottomRow();
+}
+
+function refreshBottomRow() {
     var text = "";
     for (i = 0; i < 5; i++) {
-        text += values[Math.floor(Math.random() * Object.keys(values).length + 1)] + " ";
+        text += values[Math.floor(Math.random() * totalWordCount)] + " ";
     }
     letterCountNext = text.length;
     var elements = $();
     for (i = 0; i < letterCountNext; i++) {
         elements = elements.add("<span id=\"letter" + i + "\" class=\"default\">" + text.charAt(i) + "</span>");
     }
-    outputNextTxt.append(elements);
+    $("#outputNextTxt").append(elements);
 }
