@@ -11,7 +11,6 @@ $(function () {
     });
 })
 
-
 function updateValue(e) {
     if (!started) {
         start();
@@ -31,8 +30,8 @@ function updateValue(e) {
             changeColor(index, "default");
     else if (max == letterCount)
         verify(false);
+        
 }
-
 
 function changeColor(index, style) {
     $("#letter" + index).attr("class", style);
